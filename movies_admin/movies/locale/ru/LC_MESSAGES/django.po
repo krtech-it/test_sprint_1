@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-16 13:26+0000\n"
+"POT-Creation-Date: 2023-04-16 13:51+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,6 +19,34 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
 "(n%100>=11 && n%100<=14)? 2 : 3);\n"
+
+#: movies/admin.py:20 movies/models.py:53
+msgid "date of creation"
+msgstr "дата создания"
+
+#: movies/admin.py:25
+msgid "before 80s"
+msgstr "до 80х"
+
+#: movies/admin.py:26
+msgid "80s"
+msgstr "80е"
+
+#: movies/admin.py:27
+msgid "90s"
+msgstr "90е"
+
+#: movies/admin.py:28
+msgid "00s"
+msgstr "нулевые"
+
+#: movies/admin.py:29
+msgid "10s"
+msgstr "10е"
+
+#: movies/admin.py:30
+msgid "20s"
+msgstr "20е"
 
 #: movies/apps.py:8
 msgid "movies"
@@ -60,55 +88,51 @@ msgstr "Жанры"
 msgid "title"
 msgstr "название"
 
-#: movies/models.py:53
-msgid "date of creation"
-msgstr "дата создания"
-
 #: movies/models.py:55
 msgid "rating"
 msgstr "рейтинг"
 
-#: movies/models.py:63
+#: movies/models.py:64
 msgid "type"
 msgstr "тип"
 
-#: movies/models.py:73
+#: movies/models.py:74
 msgid "Film production"
 msgstr "Кинопроизведение"
 
-#: movies/models.py:74
+#: movies/models.py:75
 msgid "Film productions"
 msgstr "Кинопроизведения"
 
-#: movies/models.py:97
+#: movies/models.py:98
 msgid "full name"
 msgstr "полное имя"
 
-#: movies/models.py:101
+#: movies/models.py:102
 msgid "gender"
 msgstr "пол"
 
-#: movies/models.py:109
+#: movies/models.py:110
 msgid "Participant of the film"
 msgstr "Участник фильма"
 
-#: movies/models.py:110
+#: movies/models.py:111
 msgid "Participants of the film"
 msgstr "Участники фильма"
 
-#: movies/models.py:118
+#: movies/models.py:119
 msgid "Actor"
 msgstr "Актер"
 
-#: movies/models.py:119
+#: movies/models.py:120
 msgid "Producer"
 msgstr "Продюсер"
 
-#: movies/models.py:120
+#: movies/models.py:121
 msgid "Director"
 msgstr "Директор"
 
-#: movies/models.py:131
+#: movies/models.py:132
 msgid "role"
 msgstr "роль"
 
