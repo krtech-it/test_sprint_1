@@ -11,11 +11,6 @@ class FilmTypes(models.TextChoices):
     TV_SHOW = 'TVS', _('TV show')
 
 
-class Gender(models.TextChoices):
-    MALE = 'male', _('male')
-    FEMALE = 'female', _('female')
-
-
 class TimeStampedMixin(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -104,12 +99,6 @@ class Person(UUIDMixin, TimeStampedMixin):
     full_name = models.CharField(
         _('full name'),
         max_length=255
-    )
-    gender = models.CharField(
-        _('gender'),
-        choices=Gender.choices,
-        null=True,
-        max_length=6
     )
 
     class Meta:

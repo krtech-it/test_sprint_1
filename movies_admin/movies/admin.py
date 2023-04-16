@@ -79,6 +79,5 @@ class FilmWorkAdmin(admin.ModelAdmin):
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'gender')
+    list_display = ('full_name',)
     search_fields = ('full_name', 'uid')
-    list_filter = ('gender',)
