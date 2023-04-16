@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.db.models import UniqueConstraint
+from django.db.models import Index
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
 
@@ -54,6 +55,7 @@ class FilmWork(UUIDMixin, TimeStampedMixin):
     rating = models.FloatField(
         _('rating'),
         blank=True,
+        null=True,
         validators=[
             MinValueValidator(0),
             MaxValueValidator(100)
@@ -90,6 +92,12 @@ class GenreFilmWork(UUIDMixin):
 
     class Meta:
         db_table = "content\".\"genre_film_work"
+        constraints = [
+            UniqueConstraint(
+                fields=['film_work', 'genre'],
+                name='unique_film_work_genre'
+            ),
+        ]
 
 
 class Person(UUIDMixin, TimeStampedMixin):
@@ -121,7 +129,7 @@ class PersonFilmWork(UUIDMixin):
 
     person = models.ForeignKey(
         'Person',
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
     )
     film_work = models.ForeignKey(
         'FilmWork',
@@ -137,7 +145,7 @@ class PersonFilmWork(UUIDMixin):
         db_table = "content\".\"person_film_work"
         constraints = [
             UniqueConstraint(
-                fields=['person', 'film_work', 'role'],
-                name='unique_person_id_film_work'
-            )
+                fields=['film_work', 'person', 'role'],
+                name='unique_film_work_person_id_role'
+            ),
         ]
