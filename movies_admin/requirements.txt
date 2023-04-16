@@ -2,3 +2,4 @@ django==4.2
 flake8==6.0
 python-dotenv==1.0
 psycopg2==2.9
+django-split-settings==1.2
