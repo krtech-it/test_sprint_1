@@ -20,7 +20,7 @@ class TimeStampedMixin(models.Model):
 
 
 class UUIDMixin(models.Model):
-    uid = models.UUIDField(
+    id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
         editable=False
@@ -56,9 +56,8 @@ class FilmWork(UUIDMixin, TimeStampedMixin):
             MaxValueValidator(100)
         ]
     )
-    type = models.CharField(
+    type = models.TextField(
         _('type'),
-        max_length=3,
         choices=FilmTypes.choices,
         default=FilmTypes.MOVIE
     )
@@ -83,7 +82,7 @@ class GenreFilmWork(UUIDMixin):
         'Genre',
         on_delete=models.CASCADE
     )
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "content\".\"genre_film_work"
@@ -129,6 +128,7 @@ class PersonFilmWork(UUIDMixin):
         max_length=3,
         choices=RoleTypes.choices,
     )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "content\".\"person_film_work"
