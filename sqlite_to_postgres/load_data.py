@@ -37,12 +37,12 @@ class Table:
         cursor.execute(self.sql_select.format(self.name))
         data = cursor.fetchall()
         print(data[0])
-        # args = ','.join(pg_conn.mogrify("(%s, %s, %s)", item[:3]).decode() for item in data)
-        # with pg_conn.cursor() as pg_cursor:
-        #     pg_cursor.execute(f"""
-        #         INSERT INTO content.{self.name} (id, name, description)
-        #         VALUES {args}
-        #         """)
+        with pg_conn.cursor() as pg_cursor:
+            args = ','.join(pg_cursor.mogrify("(%s, %s, %s, %s, %s)", item).decode() for item in data)
+            pg_cursor.execute(f"""
+                INSERT INTO content.{self.name} (id, name, description, created, modified)
+                VALUES {args}
+                """)
 
     def genre_film_work_insert(self, cursor, pg_conn):
         print('genre_film_work_insert')
