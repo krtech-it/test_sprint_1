@@ -65,10 +65,23 @@ class Table:
         self.__transfer_data_to_psql(cursor, pg_conn, dict_fields)
 
     def genre_film_work_insert(self, cursor, pg_connect):
-        pass
+        dict_fields = {
+            'id': 'id',
+            'film_work_id': 'film_work_id',
+            'genre_id': 'genre_id',
+            'created_at': 'created_at',
+        }
+        self.__transfer_data_to_psql(cursor, pg_conn, dict_fields)
 
     def person_film_work_insert(self, cursor, pg_connect):
-        pass
+        dict_fields = {
+            'id': 'id',
+            'role': 'role',
+            'film_work_id': 'film_work_id',
+            'person_id': 'person_id',
+            'created_at': 'created_at',
+        }
+        self.__transfer_data_to_psql(cursor, pg_conn, dict_fields)
 
     def person_insert(self, cursor, pg_connect):
         dict_fields = {
@@ -107,12 +120,25 @@ def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
     cursor = connection.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
-    for table in tables[:1]:
+    last_table = []
+    for table in tables:
         if table[0] in TABLE_NAME_METHODS:
+            with pg_conn.cursor() as pg_cursor:
+                sql_text = '''select * from information_schema.table_constraints where table_name='{}' and constraint_type='FOREIGN KEY';'''.format(table[0])
+                pg_cursor.execute(sql_text)
+                f_keys = pg_cursor.fetchall()
+                if f_keys:
+                    last_table.append(table[0])
+                    continue
             getattr(
                 Table(table[0]),
                 TABLE_NAME_METHODS[table[0]]
             )(cursor, pg_conn)
+    for table in last_table:
+        getattr(
+            Table(table),
+            TABLE_NAME_METHODS[table]
+        )(cursor, pg_conn)
 
 
 if __name__ == '__main__':
