@@ -1,5 +1,4 @@
 import sqlite3
-from contextlib import contextmanager
 
 import psycopg2
 from psycopg2.extensions import connection as _connection
@@ -11,10 +10,10 @@ from dataclasses import dataclass, field
 
 TABLE_NAME_METHODS = {
     'genre': 'genre_insert',
-    'genre_film_work': 'genre_film_work_select',
-    'person_film_work': 'person_film_work_select',
-    'person': 'person_select',
-    'film_work': 'film_work_select',
+    'genre_film_work': 'genre_film_work_insert',
+    'person_film_work': 'person_film_work_insert',
+    'person': 'person_insert',
+    'film_work': 'film_work_insert',
 }
 
 
@@ -28,38 +27,83 @@ class FilmWork:
     created_at: datetime.datetime = field(default_factory=datetime.datetime.now)
     modified_at: datetime.datetime = field(default_factory=datetime.datetime.now)
 
+
 @dataclass()
 class Table:
     name: str
-    sql_select: str = field(default='select * from {};')
 
-    def genre_insert(self, cursor, pg_conn):
-        cursor.execute(self.sql_select.format(self.name))
-        data = cursor.fetchall()
-        print(data[0])
-        with pg_conn.cursor() as pg_cursor:
-            args = ','.join(pg_cursor.mogrify("(%s, %s, %s, %s, %s)", item).decode() for item in data)
-            pg_cursor.execute(f"""
-                INSERT INTO content.{self.name} (id, name, description, created, modified)
+    SQL_SELECT = 'select {} from {};'
+    SQL_SELECT_HEADER = 'select * from {} limit 1'
+    SQL_INSERT = """
+                INSERT INTO content.{table_name} {headers}
                 VALUES {args}
-                """)
+                on conflict (id) do nothing;
+                """
 
-    def genre_film_work_insert(self, cursor, pg_conn):
-        print('genre_film_work_insert')
+    def __transfer_data_to_psql(self, cursor, pg_connect, dict_fields, ignore_fields=None):
+        if ignore_fields is None:
+            ignore_fields = []
+        cursor.execute(self.SQL_SELECT_HEADER.format(self.name))
+        headers = [i[0] for i in cursor.description if i[0] not in ignore_fields]
+        cursor.execute(self.SQL_SELECT.format(', '.join(headers), self.name))
+        data = cursor.fetchall()
+        values_s = '(' + ', '.join(['%s'] * len(headers)) + ')'
+        headers = '(' + ', '.join([dict_fields[i] for i in headers]) + ')'
+        with pg_conn.cursor() as pg_cursor:
+            args = ','.join(pg_cursor.mogrify(values_s, item).decode() for item in data)
+            sql_text = self.SQL_INSERT.format(table_name=self.name, headers=headers, args=args)
+            pg_cursor.execute(sql_text)
 
-    def person_film_work_insert(self, cursor, pg_conn):
-        print('person_film_work_insert')
+    def genre_insert(self, cursor, pg_connect):
+        dict_fields = {
+            'id': 'id',
+            'name': 'name',
+            'description': 'description',
+            'created_at': 'created',
+            'updated_at': 'modified'
+        }
+        self.__transfer_data_to_psql(cursor, pg_conn, dict_fields)
 
-    def person_insert(self, cursor, pg_conn):
-        print('person_insert')
+    def genre_film_work_insert(self, cursor, pg_connect):
+        pass
 
-    def film_work_insert(self, cursor, pg_conn):
-        print('film_work_insert')
+    def person_film_work_insert(self, cursor, pg_connect):
+        pass
+
+    def person_insert(self, cursor, pg_connect):
+        dict_fields = {
+            'id': 'id',
+            'full_name': 'full_name',
+            'created_at': 'created',
+            'updated_at': 'modified'
+        }
+        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields)
+
+    def film_work_insert(self, cursor, pg_connect):
+        dict_fields = {
+            'id': 'id',
+            'title': 'title',
+            'description': 'description',
+            'creation_date': 'creation_date',
+            'rating': 'rating',
+            'type': 'type',
+            'created_at': 'created',
+            'updated_at': 'modified'
+        }
+        ignore_fields = ['file_path']
+        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields, ignore_fields)
+
 
 def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
     """Основной метод загрузки данных из SQLite в Postgres"""
     # postgres_saver = PostgresSaver(pg_conn)
     # sqlite_extractor = SQLiteExtractor(connection)
+    # data = sqlite_extractor.extract_movies()
+    # postgres_saver.save_all_data(data)
+
+
+
+
     cursor = connection.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
@@ -69,11 +113,15 @@ def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
                 Table(table[0]),
                 TABLE_NAME_METHODS[table[0]]
             )(cursor, pg_conn)
-    # data = sqlite_extractor.extract_movies()
-    # postgres_saver.save_all_data(data)
 
 
 if __name__ == '__main__':
-    dsl = {'dbname': 'movies_database', 'user': 'app', 'password': '123qwe', 'host': '127.0.0.1', 'port': 5432}
+    dsl = {
+        'dbname': 'movies_database',
+        'user': 'app',
+        'password': '123qwe',
+        'host': '127.0.0.1',
+        'port': 5432
+    }
     with sqlite3.connect('db.sqlite') as sqlite_conn, psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
         load_from_sqlite(sqlite_conn, pg_conn)
