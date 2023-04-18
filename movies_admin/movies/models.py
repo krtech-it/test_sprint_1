@@ -123,9 +123,8 @@ class PersonFilmWork(UUIDMixin):
         'FilmWork',
         on_delete=models.CASCADE
     )
-    role = models.CharField(
+    role = models.TextField(
         _('role'),
-        max_length=3,
         choices=RoleTypes.choices,
     )
     created_at = models.DateTimeField(auto_now_add=True)
