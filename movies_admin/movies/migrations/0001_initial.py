@@ -14,6 +14,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+
+        migrations.RunSQL(
+            sql="""
+                CREATE SCHEMA content
+            """,
+            reverse_sql="""DROP SCHEMA content"""
+        ),
         migrations.CreateModel(
             name='FilmWork',
             fields=[
@@ -31,6 +38,17 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Film productions',
                 'db_table': 'content"."film_work',
             },
+        ),
+        migrations.RunSQL(
+            sql="""
+                    DROP TYPE IF EXISTS type;
+                    CREATE TYPE type AS ENUM ('MOV', 'TVS');
+                    ALTER TABLE "content"."film_work" ALTER COLUMN "type" TYPE type USING "type"::type;
+                    """,
+            reverse_sql="""
+                ALTER TABLE "content"."film_work" ALTER COLUMN "type" TYPE varchar(3) USING "type"::varchar(3);
+                DROP TYPE IF EXISTS type;
+                """
         ),
         migrations.CreateModel(
             name='Genre',
