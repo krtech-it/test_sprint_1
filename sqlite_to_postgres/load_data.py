@@ -17,8 +17,10 @@ SQL_SELECT = 'select {} from {};'
 SQL_INSERT = """
                 INSERT INTO content.{table_name} {headers}
                 VALUES {args}
-                on conflict (id) do nothing;
+                on conflict (id) do nothing
+                {on_conflict};
                 """
+SQL_CONFLICT_OTHER = """ on conflict ({}) do nothing"""
 
 
 @dataclass()
@@ -30,13 +32,16 @@ class Table:
             sqlite_extractor,
             pg_connect,
             dict_fields,
+            uniq_fields=None,
             ignore_fields=None
     ):
         if ignore_fields is None:
             ignore_fields = []
+        if uniq_fields is None:
+            uniq_fields = []
         headers = sqlite_extractor.get_headers(self.name, ignore_fields)
         data = sqlite_extractor.get_all_data(self.name, headers)
-        pg_connect.insert_data(headers, dict_fields, data, self.name)
+        pg_connect.insert_data(headers, dict_fields, data, self.name, uniq_fields)
 
     def genre_insert(self, cursor, pg_connect):
         dict_fields = {
@@ -55,7 +60,8 @@ class Table:
             'genre_id': 'genre_id',
             'created_at': 'created_at',
         }
-        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields)
+        uniq_fields = [('film_work_id', 'genre_id'),]
+        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields, uniq_fields)
 
     def person_film_work_insert(self, cursor, pg_connect):
         dict_fields = {
@@ -65,7 +71,8 @@ class Table:
             'person_id': 'person_id',
             'created_at': 'created_at',
         }
-        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields)
+        uniq_fields = [('film_work_id', 'person_id', 'role'),]
+        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields, uniq_fields)
 
     def person_insert(self, cursor, pg_connect):
         dict_fields = {
@@ -111,12 +118,15 @@ class PostgresSaver:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close_connect()
 
-    def insert_data(self, headers, dict_fields, data, table_name):
+    def insert_data(self, headers, dict_fields, data, table_name, uniq_fields):
         values_s = '(' + ', '.join(['%s'] * len(headers)) + ')'
         headers = '(' + ', '.join([dict_fields[i] for i in headers]) + ')'
+        sql_uniq_fields = ''
+        for uniq_fields_once in uniq_fields:
+            sql_uniq_fields += SQL_CONFLICT_OTHER.format(', '.join(uniq_fields_once))
         with self.conn_pg.cursor() as pg_cursor:
             args = ','.join(pg_cursor.mogrify(values_s, item).decode() for item in data)
-            sql_text = SQL_INSERT.format(table_name=table_name, headers=headers, args=args)
+            sql_text = SQL_INSERT.format(table_name=table_name, headers=headers, args=args, on_conflict=sql_uniq_fields)
             pg_cursor.execute(sql_text)
 
     def get_foreing_keys(self, table_name):
