@@ -1,12 +1,9 @@
 import sqlite3
 
 import psycopg2
-from psycopg2.extensions import connection as _connection
 from psycopg2.extras import DictCursor
 
-import uuid
-import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 TABLE_NAME_METHODS = {
     'genre': 'genre_insert',
@@ -24,31 +21,22 @@ SQL_INSERT = """
                 """
 
 
-@dataclass
-class FilmWork:
-    title: str
-    description: str
-    creation_date: str
-    rating: float = field(default=0.0)
-    id: uuid.uuid4 = field(default_factory=uuid.uuid4)
-    created_at: datetime.datetime = field(default_factory=datetime.datetime.now)
-    modified_at: datetime.datetime = field(default_factory=datetime.datetime.now)
-
-
 @dataclass()
 class Table:
     name: str
-    # dict_fields
-    # ignore_fields на подумать
 
-
-
-    def __transfer_data_to_psql(self, sqlite_extractor, pg_connect, dict_fields, ignore_fields=None):
+    def __transfer_data_to_psql(
+            self,
+            sqlite_extractor,
+            pg_connect,
+            dict_fields,
+            ignore_fields=None
+    ):
         if ignore_fields is None:
             ignore_fields = []
         headers = sqlite_extractor.get_headers(self.name, ignore_fields)
-        data = sqlite_extractor.get_all_data(self.name)
-        pg_connect.insert_data(headers, dict_fields, data)
+        data = sqlite_extractor.get_all_data(self.name, headers)
+        pg_connect.insert_data(headers, dict_fields, data, self.name)
 
     def genre_insert(self, cursor, pg_connect):
         dict_fields = {
@@ -117,17 +105,25 @@ class PostgresSaver:
     def __del__(self):
         self.close_connect()
 
-    def insert_data(self, headers, dict_fields, data):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close_connect()
+
+    def insert_data(self, headers, dict_fields, data, table_name):
         values_s = '(' + ', '.join(['%s'] * len(headers)) + ')'
         headers = '(' + ', '.join([dict_fields[i] for i in headers]) + ')'
         with self.conn_pg.cursor() as pg_cursor:
             args = ','.join(pg_cursor.mogrify(values_s, item).decode() for item in data)
-            sql_text = SQL_INSERT.format(table_name=self.name, headers=headers, args=args)
+            sql_text = SQL_INSERT.format(table_name=table_name, headers=headers, args=args)
             pg_cursor.execute(sql_text)
 
     def get_foreing_keys(self, table_name):
         with self.conn_pg.cursor() as cursor:
-            sql_text = '''select * from information_schema.table_constraints where table_name='{}' and constraint_type='FOREIGN KEY';'''.format(table_name)
+            sql_text = """select * from information_schema.table_constraint
+             where table_name='{}' and constraint_type='FOREIGN KEY';"""\
+                .format(table_name)
             cursor.execute(sql_text)
             f_keys = cursor.fetchall()
             return f_keys
@@ -149,6 +145,12 @@ class SQLiteExtractor:
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def get_list_table(self):
         self.cursor.execute('''SELECT name FROM sqlite_master WHERE type='table';''')
         return self.cursor.fetchall()
@@ -164,11 +166,8 @@ class SQLiteExtractor:
         return data
 
 
-
-def load_from_sqlite(sqlite3_path, dsl):
+def load_from_sqlite(sqlite_extractor, postgres_saver):
     """Основной метод загрузки данных из SQLite в Postgres"""
-    postgres_saver = PostgresSaver(dsl)
-    sqlite_extractor = SQLiteExtractor(sqlite3_path)
     list_table = sqlite_extractor.get_list_table()
     last_table = []
     for table in list_table:
@@ -196,6 +195,6 @@ if __name__ == '__main__':
         'host': '127.0.0.1',
         'port': 5432
     }
-    load_from_sqlite('db.sqlite', dsl)
-    # with sqlite3.connect('db.sqlite') as sqlite_conn, psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
-    #     load_from_sqlite(sqlite_conn, pg_conn)
+    sqlite3_path = 'db.sqlite'
+    with PostgresSaver(dsl) as pg_conn, SQLiteExtractor(sqlite3_path) as sqlite_conn:
+        load_from_sqlite(sqlite_conn, pg_conn)
