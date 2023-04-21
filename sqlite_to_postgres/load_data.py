@@ -1,30 +1,27 @@
 import sqlite3
 
+from datetime import datetime, timezone
+
 import psycopg2
 from psycopg2.extras import DictCursor
 
 from dataclasses import dataclass
 
+MANY_TO_MANY_TABLES = ['genre_film_work', 'person_film_work']
 TABLE_NAME_METHODS = {
-    'genre': 'genre_insert',
-    'genre_film_work': 'genre_film_work_insert',
-    'person_film_work': 'person_film_work_insert',
-    'person': 'person_insert',
-    'film_work': 'film_work_insert',
+    'genre': 'genre_init',
+    'genre_film_work': 'genre_film_work_init',
+    'person_film_work': 'person_film_work_init',
+    'person': 'person_init',
+    'film_work': 'film_work_init',
 }
-SQL_SELECT_HEADER = 'select * from {} limit 1'
-SQL_SELECT = 'select {} from {};'
-SQL_INSERT = """
-                INSERT INTO content.{table_name} {headers}
-                VALUES {args}
-                on conflict (id) do nothing
-                {on_conflict};
-                """
-SQL_CONFLICT_OTHER = """ on conflict ({}) do nothing"""
+SQL_SELECT = """SELECT {} FROM {};"""
+TIMESTAMP_WITH_TIMEZONE = datetime.now(timezone.utc)
 
 
 @dataclass()
 class Table:
+    """Инициализатор таблиц"""
     name: str
 
     def __transfer_data_to_psql(
@@ -32,59 +29,60 @@ class Table:
             sqlite_extractor,
             pg_connect,
             dict_fields,
-            uniq_fields=None,
-            ignore_fields=None
+            ignore_fields=None,
+            datetime_fields=None
     ):
+        """Перенос данных между таблицами"""
         if ignore_fields is None:
             ignore_fields = []
-        if uniq_fields is None:
-            uniq_fields = []
         headers = sqlite_extractor.get_headers(self.name, ignore_fields)
         data = sqlite_extractor.get_all_data(self.name, headers)
-        pg_connect.insert_data(headers, dict_fields, data, self.name, uniq_fields)
+        pg_connect.insert_data(headers, dict_fields, data, self.name, datetime_fields)
 
-    def genre_insert(self, cursor, pg_connect):
-        dict_fields = {
+    def genre_init(self, cursor, pg_connect):
+        mapping_fields = {
             'id': 'id',
             'name': 'name',
             'description': 'description',
             'created_at': 'created',
             'updated_at': 'modified'
         }
-        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields)
+        datetime_fields = ['created_at', 'updated_at']
+        self.__transfer_data_to_psql(cursor, pg_connect, mapping_fields, datetime_fields=datetime_fields)
 
-    def genre_film_work_insert(self, cursor, pg_connect):
-        dict_fields = {
+    def genre_film_work_init(self, cursor, pg_connect):
+        mapping_fields = {
             'id': 'id',
             'film_work_id': 'film_work_id',
             'genre_id': 'genre_id',
             'created_at': 'created_at',
         }
-        uniq_fields = [('film_work_id', 'genre_id'),]
-        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields, uniq_fields)
+        datetime_fields = ['created_at']
+        self.__transfer_data_to_psql(cursor, pg_connect, mapping_fields, ignore_fields=None, datetime_fields=datetime_fields)
 
-    def person_film_work_insert(self, cursor, pg_connect):
-        dict_fields = {
+    def person_film_work_init(self, cursor, pg_connect):
+        mapping_fields = {
             'id': 'id',
             'role': 'role',
             'film_work_id': 'film_work_id',
             'person_id': 'person_id',
             'created_at': 'created_at',
         }
-        uniq_fields = [('film_work_id', 'person_id', 'role'),]
-        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields, uniq_fields)
+        datetime_fields = ['created_at']
+        self.__transfer_data_to_psql(cursor, pg_connect, mapping_fields, datetime_fields=datetime_fields)
 
-    def person_insert(self, cursor, pg_connect):
-        dict_fields = {
+    def person_init(self, cursor, pg_connect):
+        mapping_fields = {
             'id': 'id',
             'full_name': 'full_name',
             'created_at': 'created',
             'updated_at': 'modified'
         }
-        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields)
+        datetime_fields = ['created_at', 'updated_at']
+        self.__transfer_data_to_psql(cursor, pg_connect, mapping_fields, datetime_fields=datetime_fields)
 
-    def film_work_insert(self, cursor, pg_connect):
-        dict_fields = {
+    def film_work_init(self, cursor, pg_connect):
+        mapping_fields = {
             'id': 'id',
             'title': 'title',
             'description': 'description',
@@ -94,8 +92,9 @@ class Table:
             'created_at': 'created',
             'updated_at': 'modified'
         }
+        datetime_fields = ['created_at', 'updated_at']
         ignore_fields = ['file_path']
-        self.__transfer_data_to_psql(cursor, pg_connect, dict_fields, ignore_fields)
+        self.__transfer_data_to_psql(cursor, pg_connect, mapping_fields, ignore_fields=ignore_fields, datetime_fields=datetime_fields)
 
 
 @dataclass
@@ -109,6 +108,9 @@ class PostgresSaver:
     def close_connect(self):
         self.conn_pg.close()
 
+    def rollback_connect(self):
+        self.conn_pg.rollback()
+
     def __del__(self):
         self.close_connect()
 
@@ -118,25 +120,28 @@ class PostgresSaver:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close_connect()
 
-    def insert_data(self, headers, dict_fields, data, table_name, uniq_fields):
+    def insert_data(self, headers, dict_fields, data, table_name, datetime_fields=None):
+        """Запись данных в Postgres"""
+        if datetime_fields is None:
+            datetime_fields = []
         values_s = '(' + ', '.join(['%s'] * len(headers)) + ')'
-        headers = '(' + ', '.join([dict_fields[i] for i in headers]) + ')'
-        sql_uniq_fields = ''
-        for uniq_fields_once in uniq_fields:
-            sql_uniq_fields += SQL_CONFLICT_OTHER.format(', '.join(uniq_fields_once))
+        headers_s = '(' + ', '.join([dict_fields[i] for i in headers]) + ')'
         with self.conn_pg.cursor() as pg_cursor:
-            args = ','.join(pg_cursor.mogrify(values_s, item).decode() for item in data)
-            sql_text = SQL_INSERT.format(table_name=table_name, headers=headers, args=args, on_conflict=sql_uniq_fields)
+            args = []
+            for item in data:
+                item = list(item)
+                for datetime_field in datetime_fields:
+                    index_datetime_field = headers.index(datetime_field)
+                    item[index_datetime_field] = TIMESTAMP_WITH_TIMEZONE
+                args.append(pg_cursor.mogrify(values_s, item).decode())
+            args = ','.join(args)
+            sql_text = """
+                INSERT INTO content.{table_name} {headers}
+                VALUES {args}
+                on conflict (id) do nothing;
+                """.format(table_name=table_name, headers=headers_s, args=args,)
             pg_cursor.execute(sql_text)
-
-    def get_foreing_keys(self, table_name):
-        with self.conn_pg.cursor() as cursor:
-            sql_text = """select * from information_schema.table_constraint
-             where table_name='{}' and constraint_type='FOREIGN KEY';"""\
-                .format(table_name)
-            cursor.execute(sql_text)
-            f_keys = cursor.fetchall()
-            return f_keys
+        self.conn_pg.commit()
 
 
 @dataclass
@@ -162,15 +167,18 @@ class SQLiteExtractor:
         self.close()
 
     def get_list_table(self):
-        self.cursor.execute('''SELECT name FROM sqlite_master WHERE type='table';''')
+        """Получить список всех табиц"""
+        self.cursor.execute("""SELECT name FROM sqlite_master WHERE type='table';""")
         return self.cursor.fetchall()
 
     def get_headers(self, table_name, ignore_fields):
-        self.cursor.execute(SQL_SELECT_HEADER.format(table_name))
+        """Получить заголовки табоицы"""
+        self.cursor.execute("""SELECT * FROM {} limit 1""".format(table_name))
         headers = [i[0] for i in self.cursor.description if i[0] not in ignore_fields]
         return headers
 
     def get_all_data(self, table_name, headers):
+        """Получить все записи из таблицы"""
         self.cursor.execute(SQL_SELECT.format(', '.join(headers), table_name))
         data = self.cursor.fetchall()
         return data
@@ -182,8 +190,7 @@ def load_from_sqlite(sqlite_extractor, postgres_saver):
     last_table = []
     for table in list_table:
         if table[0] in TABLE_NAME_METHODS:
-            f_keys = postgres_saver.get_foreing_keys(table[0])
-            if f_keys:
+            if table[0] in MANY_TO_MANY_TABLES:
                 last_table.append(table[0])
                 continue
             getattr(
