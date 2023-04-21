@@ -5,7 +5,7 @@ import unittest
 TABLE_FIELDS = {
     'genre': 'id, name, description',
     'film_work': 'id, title, description, creation_date, rating, type',
-    'genre_film_work': 'id, film_id, genre_id',
+    'genre_film_work': 'id, film_work_id, genre_id',
     'person': 'id, full_name',
     'person_film_work': 'id, film_work_id, role'
 
