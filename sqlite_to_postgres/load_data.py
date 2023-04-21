@@ -7,6 +7,16 @@ from psycopg2.extras import DictCursor
 
 from dataclasses import dataclass
 
+
+dsl = {
+        'dbname': 'movies_database',
+        'user': 'app',
+        'password': '123qwe',
+        'host': '127.0.0.1',
+        'port': 5432
+    }
+sqlite3_path = 'db.sqlite'
+
 MANY_TO_MANY_TABLES = ['genre_film_work', 'person_film_work']
 TABLE_NAME_METHODS = {
     'genre': 'genre_init',
@@ -100,7 +110,7 @@ class Table:
 @dataclass
 class PostgresSaver:
     data: dict
-    conn_pg: sqlite3.Connection = None
+    conn_pg: psycopg2.extensions.connection = None
 
     def __post_init__(self):
         self.conn_pg = psycopg2.connect(**self.data, cursor_factory=DictCursor)
@@ -205,13 +215,5 @@ def load_from_sqlite(sqlite_extractor, postgres_saver):
 
 
 if __name__ == '__main__':
-    dsl = {
-        'dbname': 'movies_database',
-        'user': 'app',
-        'password': '123qwe',
-        'host': '127.0.0.1',
-        'port': 5432
-    }
-    sqlite3_path = 'db.sqlite'
     with PostgresSaver(dsl) as pg_conn, SQLiteExtractor(sqlite3_path) as sqlite_conn:
         load_from_sqlite(sqlite_conn, pg_conn)
