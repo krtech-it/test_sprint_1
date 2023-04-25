@@ -16,9 +16,9 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             sql="""
-                    CREATE SCHEMA IF NOT EXISTS content
+                    CREATE SCHEMA IF NOT EXISTS content;
                 """,
-            reverse_sql="""DROP SCHEMA IF EXISTS content"""
+            reverse_sql="""DROP SCHEMA IF EXISTS content;"""
         ),
         migrations.CreateModel(
             name='FilmWork',
