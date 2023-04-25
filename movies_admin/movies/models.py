@@ -12,8 +12,8 @@ class FilmTypes(models.TextChoices):
 
 
 class TimeStampedMixin(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
-    modified = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
@@ -75,11 +75,11 @@ class FilmWork(UUIDMixin, TimeStampedMixin):
 
 class GenreFilmWork(UUIDMixin):
     film_work = models.ForeignKey(
-        'FilmWork',
+        FilmWork,
         on_delete=models.CASCADE
     )
     genre = models.ForeignKey(
-        'Genre',
+        Genre,
         on_delete=models.CASCADE
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -116,11 +116,11 @@ class PersonFilmWork(UUIDMixin):
         DIRECTOR = 'DRC', _('Director')
 
     person = models.ForeignKey(
-        'Person',
+        Person,
         on_delete=models.CASCADE,
     )
     film_work = models.ForeignKey(
-        'FilmWork',
+        FilmWork,
         on_delete=models.CASCADE
     )
     role = models.TextField(

@@ -10,6 +10,7 @@ from .models import PersonFilmWork
 
 class GenreFilmInline(admin.TabularInline):
     model = GenreFilmWork
+    autocomplete_fields = ['genre']
 
 
 class PersonFilmInline(admin.TabularInline):
@@ -65,19 +66,29 @@ class DateCreatedListFilter(admin.SimpleListFilter):
 @admin.register(Genre)
 class GenreAdmin(admin.ModelAdmin):
     list_display = ('name',)
-    search_fields = ('name', 'uid')
+    search_fields = ('name', 'id')
 
 
 @admin.register(FilmWork)
 class FilmWorkAdmin(admin.ModelAdmin):
     inlines = (GenreFilmInline, PersonFilmInline)
 
-    list_display = ('title', 'type', 'creation_date', 'rating')
+    list_display = ('title', 'type', 'get_genres', 'creation_date', 'rating')
     list_filter = ('type', DateCreatedListFilter)
-    search_fields = ('title', 'description', 'uid')
+    search_fields = ('title', 'description', 'id')
+
+    list_prefetch_related = ('genres',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related(*self.list_prefetch_related)
+
+    def get_genres(self, obj):
+        return ','.join([genre.name for genre in obj.genres.all()])
+    get_genres.short_description = _("film's genres")
 
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = ('full_name',)
-    search_fields = ('full_name', 'uid')
+    search_fields = ('full_name', 'id')
