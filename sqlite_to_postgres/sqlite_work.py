@@ -17,6 +17,9 @@ class SQLiteExtractor:
     def close(self) -> None:
         self.conn.close()
 
+    def close_cursor(self) -> None:
+        self.cursor.close()
+
     def __del__(self) -> None:
         self.close()
 
@@ -40,6 +43,4 @@ class SQLiteExtractor:
     def get_all_data(self, table_name: str, headers: set) -> sqlite3.Cursor:
         """Получить все записи из таблицы"""
         self.cursor.execute(SQL_SELECT.format(', '.join(headers), table_name))
-        self.cursor.fetchmany()
-        # data = self.cursor.fetchall()
         return self.cursor

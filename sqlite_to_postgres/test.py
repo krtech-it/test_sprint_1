@@ -1,6 +1,7 @@
+import unittest
+
 from load_data import PostgresSaver, SQLiteExtractor
 from load_data import dsl, sqlite3_path
-import unittest
 
 TABLE_FIELDS = {
     'genre': 'id, name, description',
