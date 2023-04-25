@@ -106,6 +106,7 @@ class SQLiteExtractor:
 
 
 class TableWork:
+
     def sorted_values(self, headers: list) -> tuple:
         return tuple(self.__dict__.get(colm) for colm in headers)
 
@@ -140,6 +141,10 @@ class FilmWork(TableWork):
     created_at: datetime = TIMESTAMP_WITH_TIMEZONE
     updated_at: datetime = TIMESTAMP_WITH_TIMEZONE
 
+    def __post_init__(self):
+        self.created_at: datetime = TIMESTAMP_WITH_TIMEZONE
+        self.updated_at: datetime = TIMESTAMP_WITH_TIMEZONE
+
 
 @dataclass
 class Genre(TableWork):
@@ -149,6 +154,10 @@ class Genre(TableWork):
     created_at: datetime = TIMESTAMP_WITH_TIMEZONE
     updated_at: datetime = TIMESTAMP_WITH_TIMEZONE
 
+    def __post_init__(self):
+        self.created_at: datetime = TIMESTAMP_WITH_TIMEZONE
+        self.updated_at: datetime = TIMESTAMP_WITH_TIMEZONE
+
 
 @dataclass
 class Person(TableWork):
@@ -156,6 +165,10 @@ class Person(TableWork):
     full_name: str
     created_at: datetime = TIMESTAMP_WITH_TIMEZONE
     updated_at: datetime = TIMESTAMP_WITH_TIMEZONE
+
+    def __post_init__(self):
+        self.created_at: datetime = TIMESTAMP_WITH_TIMEZONE
+        self.updated_at: datetime = TIMESTAMP_WITH_TIMEZONE
 
 
 @dataclass
@@ -165,6 +178,9 @@ class GenreFilmWork(TableWork):
     genre_id: str
     created_at: datetime = TIMESTAMP_WITH_TIMEZONE
 
+    def __post_init__(self):
+        self.created_at: datetime = TIMESTAMP_WITH_TIMEZONE
+
 
 @dataclass
 class PersonFilmWork(TableWork):
@@ -173,6 +189,9 @@ class PersonFilmWork(TableWork):
     person_id: str
     role: str
     created_at: datetime = TIMESTAMP_WITH_TIMEZONE
+
+    def __post_init__(self):
+        self.created_at: datetime = TIMESTAMP_WITH_TIMEZONE
 
 
 def load_from_sqlite(sqlite_extractor, postgres_saver):
@@ -184,11 +203,8 @@ def load_from_sqlite(sqlite_extractor, postgres_saver):
         if table in TABLE_NAME_CLASSES:
             if table in MANY_TO_MANY_TABLES:
                 last_table.append(table)
-                continue
-            headers = TABLE_NAME_CLASSES[table].create_headers_list(sqlite_extractor, table)
-            data = sqlite_extractor.get_all_data(table, headers)
-            data = TABLE_NAME_CLASSES[table].create_data_for_insert(headers, data)
-            postgres_saver.insert_data(headers=headers, data=data, table_name=table)
+            else:
+                last_table.insert(0, table)
 
     for table in last_table:
         headers = TABLE_NAME_CLASSES[table].create_headers_list(sqlite_extractor, table)

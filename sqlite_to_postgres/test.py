@@ -11,6 +11,7 @@ TABLE_FIELDS = {
 
 }
 
+
 class TestTransferDataSQL(unittest.TestCase):
     def setUp(self) -> None:
         self.pg_conn = PostgresSaver(data=dsl)
